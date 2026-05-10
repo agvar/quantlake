@@ -1,8 +1,8 @@
-terraform{
-    required_version = ">= 1.7.0"
-    required_providers{
-        aws = { source="hashcorp/aws", version= "-> 5.0" }
-    }
+terraform {
+  required_version = ">= 1.7.0"
+  required_providers {
+    aws = { source = "hashicorp/aws", version = "~> 5.0" }
+  }
 }
 
 provider "aws" {
@@ -26,12 +26,12 @@ locals {
 }
 
 resource "aws_s3_bucket" "tfstate"{
-    bucket = locals.state_bucket_name
+    bucket = local.state_bucket_name
 }
 
 resource "aws_s3_bucket_versioning" "tfstate"{
     bucket = aws_s3_bucket.tfstate.id
-    versioning_configuration { status: "Enabled"}
+    versioning_configuration { status =  "Enabled"}
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "tfstate" {
@@ -49,7 +49,7 @@ resource "aws_s3_bucket_public_access_block" "tfstate" {
   restrict_public_buckets = true
 }
 
-resoure "aws_dynamodb_table" "tfstate_lock"{
+resource "aws_dynamodb_table" "tfstate_lock"{
     name = local.lock_table_name
     billing_mode = "PAY_PER_REQUEST"
     hash_key = "LockID"
@@ -57,10 +57,10 @@ resoure "aws_dynamodb_table" "tfstate_lock"{
         name = "LockID"
         type = "S"
     }
-    point_in_time_recovery {enabled= True}
+    point_in_time_recovery {enabled= true}
 }
 
-output "state_bucket_name" {value = ws_s3_bucket.tfstate.id}
-outout "lock_table_name" {value = aws_dynamodb_table.tfstate_lock.id}
+output "state_bucket_name" {value = aws_s3_bucket.tfstate.id}
+output "lock_table_name" {value = aws_dynamodb_table.tfstate_lock.id}
 output "account_id" {value = data.aws_caller_identity.current.account_id}
  
