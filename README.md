@@ -3,20 +3,20 @@ QuantLake is a multi-asset market intelligence platform. It ingests real-time ti
 ## Architecture
 
 ```
-yfinance / Polygon.io ─────────►    ┌────────────────────────────┐
-   WebSocket (real-time ticks)      │  EC2 t4g.nano: WS producer │
-                                    │  + Lambda REST fetchers    │
-   Alpha Vantage / Finnhub  ──EB───►│                            │
-   (EOD bars, fundamentals,         │                            │
-    news, sentiment)                └─────────────┬──────────────┘
-                                                  │
-                                                  ▼
-                                       ┌──────────────────┐
-                                       │  Kinesis Data    │
-                                       │     Streams      │
-                                       │  market-events   │
-                                       └────────┬─────────┘
-                                                │
+yfinance / Polygon.io         ───────►  ┌────────────────────────────┐
+   WebSocket (real-time ticks)          │  EC2 t4g.nano: WS producer │
+                                        │  + Lambda REST fetchers    │
+   Alpha Vantage / Finnhub    ──EB───►  │                            │
+   (EOD bars, fundamentals,             │                            │
+    news, sentiment)                    └─────────────┬──────────────┘
+                                                      │
+                                                      ▼
+                                        ┌─────────────────────────────┐
+                                        │  Kinesis Data  Streams      │
+                                        │       market-events         │
+                                        │                             │
+                                        └───────-──────┬──────────────┘
+                                                ┬------|
                           ┌─────────────────────┼─────────────────────┐
                           ▼                     ▼                     ▼
                 ┌──────────────────┐  ┌──────────────────┐  ┌─────────────────┐
