@@ -1,9 +1,9 @@
 QuantLake is a multi-asset market intelligence platform. It ingests real-time tick data, end-of-day bars, corporate actions, and news/sentiment across equities, FX, and crypto. It builds a point-in-time lakehouse with full ACID and time-travel, computes signals (momentum, volatility regime, volume-spike, sentiment-shock), and surfaces them through dashboards for portfolio managers and through a feature store for downstream quant models. The project is intentionally exam-scoped: every AWS data service in the DEA-C01 blueprint is exercised in proportion to its weight on the exam.
 
-##Architecture
+## Architecture
 
 ```
-yfinance / Polygon.io ─────────► ┌────────────────────────────┐
+yfinance / Polygon.io ─────────►    ┌────────────────────────────┐
    WebSocket (real-time ticks)      │  EC2 t4g.nano: WS producer │
                                     │  + Lambda REST fetchers    │
    Alpha Vantage / Finnhub  ──EB───►│                            │
