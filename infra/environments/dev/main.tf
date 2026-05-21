@@ -1,3 +1,14 @@
 data "aws_caller_identity" "current" {}
 
-output "account_id" { value = data.aws_caller_identity.current.account_id}
+module "iam" {
+    source = "../../modules/iam/"
+    account_id = data.aws_caller_identity.current.account_id
+    region = "us-east-1"
+    allowed_admin_ip_cidr = var.allowed_admin_ip_cidr
+}
+
+output "account_id"                { value = data.aws_caller_identity.current.account_id }
+output "glue_job_role_arn"         { value = module.iam.glue_job_role_arn }
+output "lambda_fetcher_role_arn"   { value = module.iam.lambda_fetcher_role_arn }
+output "flink_app_role_arn"        { value = module.iam.flink_app_role_arn }
+output "analyst_readonly_role_arn" { value = module.iam.analyst_readonly_role_arn }
