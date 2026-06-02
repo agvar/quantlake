@@ -1,4 +1,4 @@
 variable "allowed_admin_ip_cidr" {
-  description =  home IP for analyst role assumption"
+  description = "Home IP in CIDR notation for the analyst role assumption drill"
   type        = string
 }

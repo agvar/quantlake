@@ -15,13 +15,13 @@ dev-init:
 	cd infra/environments/dev && terraform init 
 
 dev-plan:
-	cd infra/environments/dev && terraform plan 
+	cd infra/environments/dev && terraform plan -var-file=dev.tfvars
 
 dev-apply:
-	cd infra/environments/dev && terraform apply 
+	cd infra/environments/dev && terraform apply -var-file=dev.tfvars
 
 dev-destroy:
-	cd infra/environments/dev && terraform destroy 
+	cd infra/environments/dev && terraform destroy -var-file=dev.tfvars
 
 cost-report:
 	aws ce get-cost-and-usage --profile $(PROFILE) \
