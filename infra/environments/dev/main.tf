@@ -20,6 +20,14 @@ module "s3_lake" {
   kms_key_arn = module.kms.key_arn
 }
 
+#module "networking" {
+#  source  = "../../modules/networking/"
+#  project = "quantlake"
+  # interface_endpoints stays empty for dev to keep cost at $0.
+  # Add services as you build the consumers that need them, e.g.:
+  # interface_endpoints = ["secretsmanager", "kms"]
+#}
+
 output "account_id"                { value = data.aws_caller_identity.current.account_id }
 output "glue_job_role_arn"         { value = module.iam.glue_job_role_arn }
 output "lambda_fetcher_role_arn"   { value = module.iam.lambda_fetcher_role_arn }
@@ -28,3 +36,8 @@ output "analyst_readonly_role_arn" { value = module.iam.analyst_readonly_role_ar
 
 output "kms_key_arn"  { value = module.kms.key_arn }
 output "lake_buckets" { value = module.s3_lake.bucket_names }
+
+#output "vpc_id"                  { value = module.networking.vpc_id }
+#output "public_subnet_ids"       { value = module.networking.public_subnet_ids }
+#output "private_app_subnet_ids"  { value = module.networking.private_app_subnet_ids }
+#output "private_data_subnet_ids" { value = module.networking.private_data_subnet_ids }
