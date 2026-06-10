@@ -1,0 +1,4 @@
+# boto3 is preinstalled in the Lambda Python 3.11 runtime.
+# urllib is stdlib.
+# We deliberately keep this file empty so the deployment zip stays tiny
+# (Lambda cold-start time is proportional to package size).
