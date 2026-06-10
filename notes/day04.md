@@ -1,0 +1,1 @@
+create vpc ( in region us-east1) for quantlake with 2 public subnets ( one in each AZs of us-east1a and us-east-1b)
