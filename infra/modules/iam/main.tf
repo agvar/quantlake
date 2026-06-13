@@ -104,9 +104,9 @@ data "aws_iam_policy_document" "lambda_permissions" {
     resources = [local.secrets_prefix]
   }
 
-  # Decrypt secrets
+  # Decrypt secrets (via Secrets Manager service)
   statement {
-    actions = ["kms:Decrypt"]
+    actions   = ["kms:Decrypt"]
     resources = [local.kms_key_arn]
     condition {
       test     = "StringEquals"
@@ -115,7 +115,30 @@ data "aws_iam_policy_document" "lambda_permissions" {
     }
   }
 
-  # Publish to Kinesis stream
+  # Encrypt objects written to S3 (via S3 service). PutObject on a KMS-encrypted
+  # bucket implicitly calls kms:GenerateDataKey; without this grant, PUTs fail
+  # with 403 AccessDenied even if s3:PutObject is allowed.
+  statement {
+    actions   = ["kms:GenerateDataKey", "kms:Decrypt"]
+    resources = [local.kms_key_arn]
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["s3.${var.region}.amazonaws.com"]
+    }
+  }
+
+  # Write to raw zone (Day 5 ingestion lands here)
+  statement {
+    actions   = ["s3:PutObject", "s3:PutObjectAcl"]
+    resources = ["${local.s3_raw_arn}/*"]
+  }
+  statement {
+    actions   = ["s3:ListBucket", "s3:GetBucketLocation"]
+    resources = [local.s3_raw_arn]
+  }
+
+  # Publish to Kinesis stream (Day 6+)
   statement {
     actions = ["kinesis:PutRecord", "kinesis:PutRecords", "kinesis:DescribeStream"]
     resources = [local.kinesis_stream_arn]
