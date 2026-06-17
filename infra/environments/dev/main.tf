@@ -28,6 +28,17 @@ module "s3_lake" {
   # interface_endpoints = ["secretsmanager", "kms"]
 #}
 
+module "producers" {
+  source             = "../../modules/producers/"
+  project            = "quantlake"
+  lambda_role_arn    = module.iam.lambda_fetcher_role_arn
+  raw_bucket         = module.s3_lake.raw_bucket
+  cmk_arn            = module.kms.key_arn
+  secret_id          = "quantlake/api-keys/market-data-providers"
+  tickers            = "AAPL,MSFT,NVDA"
+  producers_src_root = "${path.module}/../../../producers"
+}
+
 output "account_id"                { value = data.aws_caller_identity.current.account_id }
 output "glue_job_role_arn"         { value = module.iam.glue_job_role_arn }
 output "lambda_fetcher_role_arn"   { value = module.iam.lambda_fetcher_role_arn }
@@ -36,6 +47,9 @@ output "analyst_readonly_role_arn" { value = module.iam.analyst_readonly_role_ar
 
 output "kms_key_arn"  { value = module.kms.key_arn }
 output "lake_buckets" { value = module.s3_lake.bucket_names }
+
+output "batch_fetcher_function_name" { value = module.producers.batch_function_name }
+output "news_fetcher_function_name"  { value = module.producers.news_function_name }
 
 #output "vpc_id"                  { value = module.networking.vpc_id }
 #output "public_subnet_ids"       { value = module.networking.public_subnet_ids }

@@ -104,9 +104,9 @@ data "aws_iam_policy_document" "lambda_permissions" {
     resources = [local.secrets_prefix]
   }
 
-  # Decrypt secrets (via Secrets Manager service)
+  # Decrypt secrets
   statement {
-    actions   = ["kms:Decrypt"]
+    actions = ["kms:Decrypt"]
     resources = [local.kms_key_arn]
     condition {
       test     = "StringEquals"
@@ -115,30 +115,7 @@ data "aws_iam_policy_document" "lambda_permissions" {
     }
   }
 
-  # Encrypt objects written to S3 (via S3 service). PutObject on a KMS-encrypted
-  # bucket implicitly calls kms:GenerateDataKey; without this grant, PUTs fail
-  # with 403 AccessDenied even if s3:PutObject is allowed.
-  statement {
-    actions   = ["kms:GenerateDataKey", "kms:Decrypt"]
-    resources = [local.kms_key_arn]
-    condition {
-      test     = "StringEquals"
-      variable = "kms:ViaService"
-      values   = ["s3.${var.region}.amazonaws.com"]
-    }
-  }
-
-  # Write to raw zone (Day 5 ingestion lands here)
-  statement {
-    actions   = ["s3:PutObject", "s3:PutObjectAcl"]
-    resources = ["${local.s3_raw_arn}/*"]
-  }
-  statement {
-    actions   = ["s3:ListBucket", "s3:GetBucketLocation"]
-    resources = [local.s3_raw_arn]
-  }
-
-  # Publish to Kinesis stream (Day 6+)
+  # Publish to Kinesis stream
   statement {
     actions = ["kinesis:PutRecord", "kinesis:PutRecords", "kinesis:DescribeStream"]
     resources = [local.kinesis_stream_arn]
@@ -164,6 +141,42 @@ resource "aws_iam_role_policy" "lambda_fetcher" {
   name   = "${var.project}-lambda-fetcher-policy"
   role   = aws_iam_role.lambda_fetcher.id
   policy = data.aws_iam_policy_document.lambda_permissions.json
+}
+
+# -----------------------------------------------------------
+# Day 5 addition: console-built inline policy for S3 raw-zone
+# writes + KMS GenerateDataKey via S3. Kept as a SEPARATE
+# inline policy to mirror the console-driven workflow.
+# Resource name must match the human-readable name set in the
+# IAM console exactly so terraform import lines up.
+# -----------------------------------------------------------
+data "aws_iam_policy_document" "lambda_fetcher_s3_write" {
+  statement {
+    sid       = "WriteToRawZone"
+    actions   = ["s3:PutObject", "s3:PutObjectAcl"]
+    resources = ["${local.s3_raw_arn}/*"]
+  }
+  statement {
+    sid       = "ListRawBucket"
+    actions   = ["s3:ListBucket", "s3:GetBucketLocation"]
+    resources = [local.s3_raw_arn]
+  }
+  statement {
+    sid       = "EncryptDecryptViaS3"
+    actions   = ["kms:GenerateDataKey", "kms:Decrypt"]
+    resources = [local.kms_key_arn]
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["s3.${var.region}.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "lambda_fetcher_s3_write" {
+  name   = "${var.project}-lambda-fetcher-s3-write-inline"
+  role   = aws_iam_role.lambda_fetcher.id
+  policy = data.aws_iam_policy_document.lambda_fetcher_s3_write.json
 }
 
 # =========================================================
