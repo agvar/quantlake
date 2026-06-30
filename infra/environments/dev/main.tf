@@ -39,6 +39,15 @@ module "producers" {
   producers_src_root = "${path.module}/../../../producers"
 }
 
+module "kinesis_streams" {
+  source               = "../../modules/kinesis-streams/"
+  project              = "quantlake"
+  kms_key_arn          = module.kms.key_arn
+  market_events_shards = 1
+  anomalies_shards     = 1
+  retention_hours      = 24
+}
+
 output "account_id"                { value = data.aws_caller_identity.current.account_id }
 output "glue_job_role_arn"         { value = module.iam.glue_job_role_arn }
 output "lambda_fetcher_role_arn"   { value = module.iam.lambda_fetcher_role_arn }
@@ -50,6 +59,9 @@ output "lake_buckets" { value = module.s3_lake.bucket_names }
 
 output "batch_fetcher_function_name" { value = module.producers.batch_function_name }
 output "news_fetcher_function_name"  { value = module.producers.news_function_name }
+
+output "market_events_stream_arn" { value = module.kinesis_streams.market_events_arn }
+output "anomalies_stream_arn"     { value = module.kinesis_streams.anomalies_arn }
 
 #output "vpc_id"                  { value = module.networking.vpc_id }
 #output "public_subnet_ids"       { value = module.networking.public_subnet_ids }
