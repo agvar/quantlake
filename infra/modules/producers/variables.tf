@@ -34,3 +34,9 @@ variable "cmk_arn" {
   description = "Customer-managed KMS key ARN for Lambda env-var encryption at rest."
   type        = string
 }
+
+variable "market_events_stream_name" {
+  description = "Kinesis stream name for the news Lambda to dual-publish to. Empty disables Kinesis path."
+  type        = string
+  default     = ""
+}

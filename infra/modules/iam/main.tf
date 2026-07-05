@@ -179,6 +179,31 @@ resource "aws_iam_role_policy" "lambda_fetcher_s3_write" {
   policy = data.aws_iam_policy_document.lambda_fetcher_s3_write.json
 }
 
+# -----------------------------------------------------------
+# Day 7 addition: kms:GenerateDataKey scoped to Kinesis. The
+# Day 2 base policy already grants kinesis:PutRecord* on the
+# market-events stream; this completes the picture by allowing
+# the CMK to be invoked on Lambda's behalf for stream encryption.
+# -----------------------------------------------------------
+data "aws_iam_policy_document" "lambda_fetcher_kinesis_encrypt" {
+  statement {
+    sid       = "EncryptDecryptViaKinesis"
+    actions   = ["kms:GenerateDataKey", "kms:Decrypt"]
+    resources = [local.kms_key_arn]
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["kinesis.${var.region}.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "lambda_fetcher_kinesis_encrypt" {
+  name   = "${var.project}-lambda-fetcher-kinesis-encrypt-inline"
+  role   = aws_iam_role.lambda_fetcher.id
+  policy = data.aws_iam_policy_document.lambda_fetcher_kinesis_encrypt.json
+}
+
 # =========================================================
 # 3. Managed Flink Application Role
 # =========================================================

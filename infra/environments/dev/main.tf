@@ -29,14 +29,15 @@ module "s3_lake" {
 #}
 
 module "producers" {
-  source             = "../../modules/producers/"
-  project            = "quantlake"
-  lambda_role_arn    = module.iam.lambda_fetcher_role_arn
-  raw_bucket         = module.s3_lake.raw_bucket
-  cmk_arn            = module.kms.key_arn
-  secret_id          = "quantlake/api-keys/market-data-providers"
-  tickers            = "AAPL,MSFT,NVDA"
-  producers_src_root = "${path.module}/../../../producers"
+  source                    = "../../modules/producers/"
+  project                   = "quantlake"
+  lambda_role_arn           = module.iam.lambda_fetcher_role_arn
+  raw_bucket                = module.s3_lake.raw_bucket
+  cmk_arn                   = module.kms.key_arn
+  secret_id                 = "quantlake/api-keys/market-data-providers"
+  tickers                   = "AAPL,MSFT,NVDA"
+  producers_src_root        = "${path.module}/../../../producers"
+  market_events_stream_name = module.kinesis_streams.market_events_name
 }
 
 module "kinesis_streams" {
@@ -46,6 +47,14 @@ module "kinesis_streams" {
   market_events_shards = 1
   anomalies_shards     = 1
   retention_hours      = 24
+}
+
+module "firehose" {
+  source            = "../../modules/firehose/"
+  project           = "quantlake"
+  source_stream_arn = module.kinesis_streams.market_events_arn
+  raw_bucket_arn    = "arn:aws:s3:::${module.s3_lake.raw_bucket}"
+  kms_key_arn       = module.kms.key_arn
 }
 
 output "account_id"                { value = data.aws_caller_identity.current.account_id }
@@ -62,6 +71,9 @@ output "news_fetcher_function_name"  { value = module.producers.news_function_na
 
 output "market_events_stream_arn" { value = module.kinesis_streams.market_events_arn }
 output "anomalies_stream_arn"     { value = module.kinesis_streams.anomalies_arn }
+
+output "firehose_delivery_stream_name" { value = module.firehose.delivery_stream_name }
+output "firehose_log_group"            { value = module.firehose.log_group_name }
 
 #output "vpc_id"                  { value = module.networking.vpc_id }
 #output "public_subnet_ids"       { value = module.networking.public_subnet_ids }

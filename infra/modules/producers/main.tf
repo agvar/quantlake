@@ -70,9 +70,10 @@ resource "aws_lambda_function" "news" {
 
   environment {
     variables = {
-      RAW_BUCKET = var.raw_bucket
-      SECRET_ID  = var.secret_id
-      TICKERS    = var.tickers
+      RAW_BUCKET           = var.raw_bucket
+      SECRET_ID            = var.secret_id
+      TICKERS              = var.tickers
+      KINESIS_STREAM_NAME  = var.market_events_stream_name
     }
   }
 

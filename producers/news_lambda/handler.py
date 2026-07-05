@@ -25,6 +25,7 @@ import boto3
 
 SECRETS = boto3.client("secretsmanager")
 S3 = boto3.client("s3")
+KINESIS = boto3.client("kinesis")
 
 LOG = logging.getLogger()
 LOG.setLevel(logging.INFO)
@@ -86,6 +87,42 @@ def normalize_news(symbol: str, articles: list[dict]) -> list[dict]:
     return out
 
 
+def publish_to_kinesis(stream_name: str, records: list[dict]) -> int:
+    """
+    Publish records to Kinesis via PutRecords (batch of up to 500, max 5 MB).
+    Returns number of successfully published records.
+
+    PartitionKey = symbol so per-symbol ordering is preserved on the shard.
+    PutRecords does NOT auto-retry individual failed records -- the caller is
+    expected to retry only the failed indices. We log them; a production
+    consumer would retry-with-backoff.
+    """
+    if not records:
+        return 0
+
+    BATCH = 500
+    published = 0
+    for i in range(0, len(records), BATCH):
+        chunk = records[i:i + BATCH]
+        kinesis_records = [{
+            "Data": json.dumps(r).encode("utf-8"),
+            "PartitionKey": r.get("symbol", "UNKNOWN"),
+        } for r in chunk]
+        response = KINESIS.put_records(StreamName=stream_name, Records=kinesis_records)
+        failed = response.get("FailedRecordCount", 0)
+        published += (len(chunk) - failed)
+        if failed > 0:
+            failed_records = [
+                (chunk[idx].get("dedup_key"), entry.get("ErrorCode"))
+                for idx, entry in enumerate(response["Records"])
+                if "ErrorCode" in entry
+            ]
+            LOG.warning("Kinesis put_records: %d failed of %d. Examples: %s",
+                        failed, len(chunk), failed_records[:5])
+    LOG.info("Published %d records to Kinesis %s", published, stream_name)
+    return published
+
+
 def write_to_s3(bucket: str, symbol: str, records: list[dict]) -> str:
     if not records:
         LOG.info("No news for %s; skipping write.", symbol)
@@ -112,6 +149,9 @@ def lambda_handler(event, context):
     bucket = os.environ["RAW_BUCKET"]
     secret_id = os.environ["SECRET_ID"]
     tickers = os.environ.get("TICKERS", "AAPL,MSFT,NVDA").split(",")
+    # KINESIS_STREAM_NAME is optional. If unset, Lambda only writes to S3
+    # (Day 5 behavior). If set, Lambda dual-writes to S3 + Kinesis (Day 7).
+    stream_name = os.environ.get("KINESIS_STREAM_NAME", "")
     api_key = get_api_key(secret_id, "FINNHUB_KEY")
 
     written = []
@@ -123,7 +163,13 @@ def lambda_handler(event, context):
             articles = fetch_news(symbol, api_key)
             records = normalize_news(symbol, articles)
             key = write_to_s3(bucket, symbol, records)
-            written.append({"symbol": symbol, "key": key, "records": len(records)})
+            kinesis_count = publish_to_kinesis(stream_name, records) if stream_name else 0
+            written.append({
+                "symbol": symbol,
+                "key": key,
+                "records": len(records),
+                "kinesis_published": kinesis_count,
+            })
         except Exception as exc:
             LOG.exception("Failed for %s: %s", symbol, exc)
             written.append({"symbol": symbol, "error": str(exc)})
