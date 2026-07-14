@@ -57,6 +57,17 @@ module "firehose" {
   kms_key_arn       = module.kms.key_arn
 }
 
+module "glue" {
+  source           = "../../modules/glue/"
+  project          = "quantlake"
+  account_id       = data.aws_caller_identity.current.account_id
+  raw_bucket       = module.s3_lake.raw_bucket
+  bronze_bucket    = module.s3_lake.bronze_bucket
+  glue_role_arn    = module.iam.glue_job_role_arn
+  scripts_src_root = "${path.module}/../../../glue-scripts"
+  tickers          = "AAPL,MSFT,NVDA"
+}
+
 output "account_id"                { value = data.aws_caller_identity.current.account_id }
 output "glue_job_role_arn"         { value = module.iam.glue_job_role_arn }
 output "lambda_fetcher_role_arn"   { value = module.iam.lambda_fetcher_role_arn }
@@ -74,6 +85,11 @@ output "anomalies_stream_arn"     { value = module.kinesis_streams.anomalies_arn
 
 output "firehose_delivery_stream_name" { value = module.firehose.delivery_stream_name }
 output "firehose_log_group"            { value = module.firehose.log_group_name }
+
+output "glue_raw_database"    { value = module.glue.raw_database }
+output "glue_bronze_database" { value = module.glue.bronze_database }
+output "glue_bronze_job_name" { value = module.glue.job_name }
+output "glue_job_log_groups"  { value = module.glue.job_log_groups }
 
 #output "vpc_id"                  { value = module.networking.vpc_id }
 #output "public_subnet_ids"       { value = module.networking.public_subnet_ids }
