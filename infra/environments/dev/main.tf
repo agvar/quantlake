@@ -68,6 +68,14 @@ module "glue" {
   tickers          = "AAPL,MSFT,NVDA"
 }
 
+module "athena" {
+  source                = "../../modules/athena/"
+  project               = "quantlake"
+  account_id            = data.aws_caller_identity.current.account_id
+  kms_key_arn           = module.kms.key_arn
+  athena_results_bucket = module.s3_lake.athena_results_bucket
+}
+
 output "account_id"                { value = data.aws_caller_identity.current.account_id }
 output "glue_job_role_arn"         { value = module.iam.glue_job_role_arn }
 output "lambda_fetcher_role_arn"   { value = module.iam.lambda_fetcher_role_arn }
@@ -90,6 +98,9 @@ output "glue_raw_database"    { value = module.glue.raw_database }
 output "glue_bronze_database" { value = module.glue.bronze_database }
 output "glue_bronze_job_name" { value = module.glue.job_name }
 output "glue_job_log_groups"  { value = module.glue.job_log_groups }
+
+output "athena_workgroup"       { value = module.athena.workgroup_name }
+output "athena_results_prefix"  { value = module.athena.results_prefix }
 
 #output "vpc_id"                  { value = module.networking.vpc_id }
 #output "public_subnet_ids"       { value = module.networking.public_subnet_ids }
