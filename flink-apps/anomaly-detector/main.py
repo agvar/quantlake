@@ -16,16 +16,32 @@ Terraform):
 - anomaly.threshold       (int; default 3)
 """
 
-import os
 import json
+import os
 from pyflink.table import EnvironmentSettings, TableEnvironment
 
 
-def get_property(group_id: str, key: str, default=None):
-    """Read a runtime property provided via MSF PropertyGroups."""
-    props_str = os.environ.get(f"PROPERTY_GROUP_{group_id}", "{}")
-    props = json.loads(props_str)
-    return props.get(key, default)
+# MSF injects app properties as a JSON file inside the running container.
+# This path is fixed by the MSF runtime and documented by AWS.
+APPLICATION_PROPERTIES_FILE_PATH = "/etc/flink/application_properties.json"
+
+
+def get_application_properties():
+    """Load the MSF-injected properties file. Returns a list of property-group dicts."""
+    if os.path.isfile(APPLICATION_PROPERTIES_FILE_PATH):
+        with open(APPLICATION_PROPERTIES_FILE_PATH, "r") as f:
+            return json.load(f)
+    # Local-dev fallback: file not present, return empty list; caller uses defaults.
+    print(f"[warn] Properties file {APPLICATION_PROPERTIES_FILE_PATH} not found; using defaults.")
+    return []
+
+
+def property_map(all_props, property_group_id):
+    """Return the PropertyMap dict for a given group ID, or {} if absent."""
+    for prop in all_props:
+        if prop.get("PropertyGroupId") == property_group_id:
+            return prop.get("PropertyMap", {})
+    return {}
 
 
 def main():
@@ -33,11 +49,15 @@ def main():
     settings = EnvironmentSettings.new_instance().in_streaming_mode().build()
     table_env = TableEnvironment.create(settings)
 
-    # ---- runtime configuration ----
-    source_stream = get_property("kinesis.config", "source.stream", "quantlake-market-events")
-    sink_stream   = get_property("kinesis.config", "sink.stream",   "quantlake-anomalies")
-    region        = get_property("kinesis.config", "aws.region",    "us-east-1")
-    threshold     = int(get_property("anomaly.config", "threshold", 3))
+    # ---- runtime configuration from MSF property groups ----
+    all_props     = get_application_properties()
+    kinesis_cfg   = property_map(all_props, "kinesis.config")
+    anomaly_cfg   = property_map(all_props, "anomaly.config")
+
+    source_stream = kinesis_cfg.get("source.stream", "quantlake-market-events")
+    sink_stream   = kinesis_cfg.get("sink.stream",   "quantlake-anomalies")
+    region        = kinesis_cfg.get("aws.region",    "us-east-1")
+    threshold     = int(anomaly_cfg.get("threshold", 3))
 
     # ---- SOURCE TABLE ----
     # `WATERMARK FOR published_at AS published_at - INTERVAL '30' SECOND`

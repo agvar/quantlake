@@ -21,4 +21,5 @@ venv/
 # Secrets
 .env
 *.pem
-*.key
+*.keyflink-apps/anomaly-detector/*.jar
+flink-apps/flink-sql-connector-kinesis-4.3.0-1.19.jar

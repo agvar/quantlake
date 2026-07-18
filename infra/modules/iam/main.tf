@@ -205,6 +205,70 @@ resource "aws_iam_role_policy" "lambda_fetcher_kinesis_encrypt" {
 }
 
 # =========================================================
+# Day 10 addition: Flink runtime needs CloudWatch Logs, CloudWatch
+# metrics, KMS-via-kinesis (both source decrypt + sink encrypt), and
+# S3 read on the code-artifact bucket. Day 2 base only granted stream
+# I/O + silver S3.
+# =========================================================
+data "aws_iam_policy_document" "flink_runtime" {
+  # KMS for Kinesis source decrypt + sink encrypt
+  statement {
+    sid       = "EncryptDecryptViaKinesis"
+    actions   = ["kms:GenerateDataKey", "kms:Decrypt"]
+    resources = [local.kms_key_arn]
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["kinesis.${var.region}.amazonaws.com"]
+    }
+  }
+
+  # KMS via S3 -- needed to READ the CMK-encrypted app zip from the silver
+  # bucket at MSF startup, and to WRITE state snapshots to S3 if enabled.
+  statement {
+    sid       = "DecryptViaS3"
+    actions   = ["kms:Decrypt"]
+    resources = [local.kms_key_arn]
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["s3.${var.region}.amazonaws.com"]
+    }
+  }
+
+  # CloudWatch Logs (Flink emits per-app logs)
+  statement {
+    sid = "FlinkLogsRW"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+      "logs:DescribeLogStreams",
+      "logs:DescribeLogGroups",
+    ]
+    resources = ["arn:aws:logs:${var.region}:${var.account_id}:log-group:/aws/kinesis-analytics/*"]
+  }
+
+  # CloudWatch metrics
+  statement {
+    sid       = "CloudWatchMetrics"
+    actions   = ["cloudwatch:PutMetricData"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "cloudwatch:namespace"
+      values   = ["AWS/KinesisAnalytics"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "flink_runtime" {
+  name   = "${var.project}-flink-runtime-inline"
+  role   = aws_iam_role.flink_app.id
+  policy = data.aws_iam_policy_document.flink_runtime.json
+}
+
+# =========================================================
 # 3. Managed Flink Application Role
 # =========================================================
 data "aws_iam_policy_document" "flink_trust" {

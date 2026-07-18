@@ -76,6 +76,19 @@ module "athena" {
   athena_results_bucket = module.s3_lake.athena_results_bucket
 }
 
+module "flink" {
+  source              = "../../modules/flink/"
+  project             = "quantlake"
+  flink_role_arn      = module.iam.flink_app_role_arn
+  code_bucket         = module.s3_lake.silver_bucket
+  code_bucket_arn     = "arn:aws:s3:::${module.s3_lake.silver_bucket}"
+  flink_apps_src_root = "${path.module}/../../../flink-apps"
+  source_stream_name  = module.kinesis_streams.market_events_name
+  sink_stream_name    = module.kinesis_streams.anomalies_name
+  aws_region          = "us-east-1"
+  anomaly_threshold   = 3
+}
+
 output "account_id"                { value = data.aws_caller_identity.current.account_id }
 output "glue_job_role_arn"         { value = module.iam.glue_job_role_arn }
 output "lambda_fetcher_role_arn"   { value = module.iam.lambda_fetcher_role_arn }
@@ -101,6 +114,11 @@ output "glue_job_log_groups"  { value = module.glue.job_log_groups }
 
 output "athena_workgroup"       { value = module.athena.workgroup_name }
 output "athena_results_prefix"  { value = module.athena.results_prefix }
+
+output "flink_application_name" { value = module.flink.application_name }
+output "flink_log_group"        { value = module.flink.log_group }
+output "flink_start_command"    { value = module.flink.start_command }
+output "flink_stop_command"     { value = module.flink.stop_command }
 
 #output "vpc_id"                  { value = module.networking.vpc_id }
 #output "public_subnet_ids"       { value = module.networking.public_subnet_ids }
