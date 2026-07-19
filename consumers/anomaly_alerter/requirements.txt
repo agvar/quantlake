@@ -1,0 +1,1 @@
+# boto3 is baked into the Lambda Python runtime.

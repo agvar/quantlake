@@ -23,3 +23,4 @@ venv/
 *.pem
 *.keyflink-apps/anomaly-detector/*.jar
 flink-apps/flink-sql-connector-kinesis-4.3.0-1.19.jar
+flink-apps/anomaly_detector.zip
