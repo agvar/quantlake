@@ -64,3 +64,5 @@ table_env.execute_sql(f"""
         | tr '\t' '\n' | while read r; do echo "$r" | base64 --decode; echo; done
 
         Watermarks: A watermark is a strict data-driven boundary (Event Time≥Watermark) used to determine if out-of-order events are accepted for memory aggregation or rejected as too late before closing a window.
+
+        
