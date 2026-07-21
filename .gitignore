@@ -25,3 +25,5 @@ venv/
 flink-apps/flink-sql-connector-kinesis-4.3.0-1.19.jar
 flink-apps/anomaly_detector.zip
 infra/modules/flink/.build/anomaly_detector.zip
+infra/modules/alerter/.build/anomaly_alerter.zip
+flink-apps/anomaly-detector/flink-sql-connector-kinesis-4.3.0-1.19.jar
