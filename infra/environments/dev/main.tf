@@ -89,6 +89,32 @@ module "flink" {
   anomaly_threshold   = 3
 }
 
+module "fargate" {
+  source              = "../../modules/fargate/"
+  project             = "quantlake"
+  account_id          = data.aws_caller_identity.current.account_id
+  aws_region          = "us-east-1"
+  vpc_id              = var.vpc_id
+  public_subnet_ids   = var.public_subnet_ids
+  kinesis_stream_arn  = module.kinesis_streams.market_events_arn
+  kinesis_stream_name = module.kinesis_streams.market_events_name
+  secret_arn          = var.market_data_secret_arn
+  kms_key_arn         = module.kms.key_arn
+  tickers             = "AAPL,MSFT,NVDA"
+  image_tag           = "latest"
+}
+
+module "alerter" {
+  source               = "../../modules/alerter/"
+  project              = "quantlake"
+  account_id           = data.aws_caller_identity.current.account_id
+  aws_region           = "us-east-1"
+  anomalies_stream_arn = module.kinesis_streams.anomalies_arn
+  kms_key_arn          = module.kms.key_arn
+  consumers_src_root   = "${path.module}/../../../consumers"
+  alert_email          = var.alert_email
+}
+
 output "account_id"                { value = data.aws_caller_identity.current.account_id }
 output "glue_job_role_arn"         { value = module.iam.glue_job_role_arn }
 output "lambda_fetcher_role_arn"   { value = module.iam.lambda_fetcher_role_arn }
@@ -119,6 +145,15 @@ output "flink_application_name" { value = module.flink.application_name }
 output "flink_log_group"        { value = module.flink.log_group }
 output "flink_start_command"    { value = module.flink.start_command }
 output "flink_stop_command"     { value = module.flink.stop_command }
+
+output "ecr_repository_url"     { value = module.fargate.ecr_repository_url }
+output "ecs_cluster"            { value = module.fargate.cluster_name }
+output "ecs_service"            { value = module.fargate.service_name }
+output "fargate_log_group"      { value = module.fargate.log_group }
+
+output "alerter_lambda"         { value = module.alerter.lambda_name }
+output "alerter_dedup_table"    { value = module.alerter.dedup_table_name }
+output "alerter_sns_topic"      { value = module.alerter.sns_topic_arn }
 
 #output "vpc_id"                  { value = module.networking.vpc_id }
 #output "public_subnet_ids"       { value = module.networking.public_subnet_ids }
